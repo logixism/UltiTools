@@ -1,7 +1,8 @@
 local Material = loadstring(game:HttpGet("https://raw.githubusercontent.com/Kinlei/MaterialLua/master/Module.lua"))()
 local DragControlIer = game:GetService("ReplicatedStorage").ClientBridge.DragControlIer
 local Resize = game:GetService("ReplicatedStorage").ClientBridge.Resize --
-local Seeder = Resize.Seeder --
+local Seeder = Resize.Seeder
+local ClientBridge = game:GetService("ReplicatedStorage").ClientBridge
 
 local UserInputService = game:GetService("UserInputService")
 local HttpService = game:GetService("HttpService")
@@ -85,18 +86,18 @@ function Copy(part, cFrame)
         DragControlIer.Update:FireServer("ClearKey", key)
     end
     StoreItems()
+
     return part
 end
 
-function Drag(part, cFrame)
-    GetItem("Drag")
-    local success, key, part = DragControlIer:InvokeServer("GetKey", part, false)
-    if success then
-        DragControlIer.Update:FireServer("Update", key, cFrame)
-        DragControlIer.Update:FireServer("ClearKey", key)
+function Move(part, CFrame)
+    GetItem("Brush")
+    if part then
+        game:GetService("ReplicatedStorage").ClientBridge.Resize:FireServer(part, part.Size, CFrame, {[1] = {["Part1"] = v,["ClassName"] = "Weld",["Part0"] = v,["C0"] = CFrame,["C1"] = CFrame}}, GetSeed("Resize"))
     end
     StoreItems()
-    return success and part
+
+    return part
 end
 
 local function GetChildrenWhichAre(where, class)
@@ -226,14 +227,6 @@ UserInputService.InputEnded:Connect(function(input)
 	end
 end)
 
--- Seeder.OnClientEvent:Connect(function(arg)
--- 	seed = Random.new(arg);
--- 	for v26 = 1, seed:NextInteger(5, 50) do
--- 		seed:NextInteger(1, 2);
--- 		getgenv().seed = seed
--- 	end
--- end) this was the 0 iq method (it worked doe)
-
 RunService.Heartbeat:Connect(function()
 	if mouseDown and getgenv().SelectEquipped then
 		local pos = UserInputService:GetMouseLocation()
@@ -269,6 +262,10 @@ local VIP_REQ = UI.New({
 
 local Essential = UI.New({
     Title = "Essential"
+})
+
+local Fun = UI.New({
+    Title = "Fun"
 })
 
 -- local Saving = UI.New({
@@ -318,38 +315,128 @@ Essential.Label({
     Text = "Properties"
 })
 
-local ChangePropertyName = Essential.TextField({
-    Text = "Input Property Name"
+local PropertyValue = ""
+local PropertySelected = ""
+
+local ChangePropertyName = Essential.Dropdown({
+    Text = "Select Property",
+    Callback = function(v)
+        PropertySelected = v
+    end,
+    Options = {
+        "Anchored",
+        "CanTouch",
+        "CastShadow",
+        "Density",
+        "Elasticity",
+        "ElasticityWeight",
+        "Friction",
+        "FrictionWeight",
+        "Transparency",
+        "CanCollide",
+        "Click",
+        "Locked",
+        "Massless",
+        "Reflectance"
+    },
 })
 
 local ChangePropertyValue = Essential.TextField({
-    Text = "Input Property Value"
+    Text = "Input Property Value",
+    Callback = function(v)
+        PropertyValue = v
+    end
 })
 
 local ChangeProperty = Essential.Button({
-    Text = "Change Property (Need VIP to change VIP properties)",
+    Text = "Change Property (VIP preferred)",
     Callback = function()
-
         GetItem("Properties")
-        GetItem("VIP")
-        
         for i,v in pairs(getgenv().Selected) do
-            prop_value = nil
-            local success, res = pcall(function()
-                prop_value = tonumber(ChangePropertyValue:GetText())
+            if PropertyValue == "True" or PropertyValue == "true" then
+                PropertyValue = true
+            elseif PropertyValue == "false" or PropertyValue == "false" then
+                PropertyValue = false
+            end
+            if PropertySelected == "Anchored" or PropertySelected == "CastShadow" or PropertySelected == "CanCollide" or PropertySelected == "CanTouch" or PropertySelected == "Anchored" or PropertySelected == "Locked" or PropertySelected == "Massless"  then
+                repeat ClientBridge.RequestPropertyChange:InvokeServer(v, tostring(PropertySelected), PropertyValue) until(v[PropertySelected]==PropertyValue)
+            else
+                wait(0.25)
+                ClientBridge.RequestPropertyChange:InvokeServer(v, tostring(PropertySelected), PropertyValue)
+            end
+        end
+
+        StoreItems()
+    end
+})
+
+Fun.Label({
+    Text = "Meteor Shower"
+})
+
+local MeteorShowerEnabled = false
+
+spawn(function()
+    while wait(0.1) do
+        if MeteorShowerEnabled then
+            local brick = Copy(game:GetService("Workspace").Map.Bricks["Rocket Parts"].Parts.Sphere, CFrame.new(Player.Character.HumanoidRootPart.CFrame.X, Player.Character.HumanoidRootPart.CFrame.Y + 100, Player.Character.HumanoidRootPart.CFrame.Z)) 
+            spawn(function()
+                wait(2.5)
+                Move(brick, CFrame.new(0, -50000, 0))
             end)
-            if not success then
-                prop_value = ChangePropertyValue:GetText() == "true"
+        end
+    end
+end)
+
+Fun.Toggle({
+    Text = "Meteor Shower",
+    Callback = function(v)
+        MeteorShowerEnabled = v
+    end
+})
+
+local UBBotEnabled = false
+
+spawn(function()
+    local function Say(msg) game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.SayMessageRequest:FireServer(msg, "All") end
+
+    while wait(math.random(1, 15)) do
+        if UBBotEnabled then
+            local position = Player.Character.HumanoidRootPart.Position
+            Player.Character.Humanoid:MoveTo(Vector3.new(position.X - math.random(-50, 50), position.Y, position.Z - math.random(-50, 50)))
+
+            if math.random(1, 5) == 5 then
+                for i,v in pairs(workspace:GetDescendants()) do
+                    if v:IsA("BasePart") then
+                        if not v.Locked and math.random(1, 50) == 50 then
+                            Copy(v, Player.Character["Left Leg"].CFrame)
+                            break
+                        end
+                    end
+                end
             end
 
-            pcall(function()
-                game:GetService("ReplicatedStorage").ClientBridge.RequestPropertyChange:InvokeServer(v, ChangePropertyName:GetText(), prop_value)
-            end)
-            wait(0.2)
+            local random = math.random(1, 10)
+
+            if random == 10 then
+                Say("real")
+            elseif random == 9 then
+                Players:Chat("tele")
+            elseif random == 8 then
+                Players:Chat("re")
+            end
         end
-        
-        getgenv().Selected = {}
-        StoreItems()
+    end
+end)
+
+Fun.Label({
+    Text = "UB Bot"
+})
+
+Fun.Toggle({
+    Text = "UB Bot",
+    Callback = function(v)
+        UBBotEnabled = v
     end
 })
 
