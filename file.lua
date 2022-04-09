@@ -29,7 +29,7 @@ function RemoveSelection()
     end
 end
 
-function copy(part, cFrame)
+function Copy(part, cFrame)
     GetItem("Clone")
     local success, key, part = DragControlIer:InvokeServer("GetKey", part, true)
     if success then
@@ -40,7 +40,7 @@ function copy(part, cFrame)
     return success and part
 end
 
-function drag(part, cFrame)
+function Drag(part, cFrame)
     GetItem("Drag")
     local success, key, part = DragControlIer:InvokeServer("GetKey", part, false)
     if success then
@@ -211,10 +211,12 @@ local GetSelect = Main.Button({
         SelectTool.RequiresHandle = false
         SelectTool.Equipped:Connect(function()
             getgenv().SelectEquipped = true
+			getgenv().Selected = {}
         end)
         
         SelectTool.Unequipped:Connect(function()
            	getgenv().SelectEquipped = false
+			getgenv().Selected = {}
         end)
     end
 })
