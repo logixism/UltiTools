@@ -90,6 +90,17 @@ function Copy(part, cFrame)
     return part
 end
 
+-- function Drag(part, cFrame)
+--     GetItem("Drag")
+--     local success, key, part = DragControlIer:InvokeServer("GetKey", part, false)
+--     if success then
+--         DragControlIer.Update:FireServer("Update", key, cFrame)
+--         DragControlIer.Update:FireServer("ClearKey", key)
+--     end
+--     StoreItems()
+--     return success and part
+-- end
+
 function Move(part, CFrame)
     GetItem("Brush")
     if part then
@@ -98,6 +109,38 @@ function Move(part, CFrame)
     StoreItems()
 
     return part
+end
+
+function ReSize(part, size)
+    GetItem("Brush")
+    if part then
+        game:GetService("ReplicatedStorage").ClientBridge.Resize:FireServer(part, size, part.CFrame, {[1] = {["Part1"] = v,["ClassName"] = "Weld",["Part0"] = v,["C0"] = part.CFrame,["C1"] = part.CFrame}}, GetSeed("Resize"))
+    end
+    StoreItems()
+
+    return part
+end
+
+function Delete(part)
+    GetItem("Brush")
+
+    if typeof(part) == "table" then
+        for i,v in pairs(part) do
+            game:GetService("ReplicatedStorage").ClientBridge.Resize:FireServer(v, Vector3.new(0, 0, 0), CFrame.new(-50000, -50000,-50000), {[1] = {["Part1"] = v,["ClassName"] = "Weld",["Part0"] = v,["C0"] = CFrame.new(-50000, -50000,-50000),["C1"] = CFrame.new(-50000, -50000,-50000)}}, GetSeed("Resize"))
+        end
+    else
+        game:GetService("ReplicatedStorage").ClientBridge.Resize:FireServer(part, Vector3.new(0, 0, 0), CFrame.new(-50000, -50000,-50000), {[1] = {["Part1"] = v,["ClassName"] = "Weld",["Part0"] = v,["C0"] = CFrame.new(-50000, -50000,-50000),["C1"] = CFrame.new(-50000, -50000,-50000)}}, GetSeed("Resize"))
+    end
+
+    StoreItems()
+end
+
+function GetPlayer(Name)
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if (string.lower(Name) == string.sub(string.lower(plr.Name), 1, #Name)) or (string.lower(Name) == string.sub(string.lower(plr.DisplayName), 1, #Name)) then
+            return plr;
+        end
+    end
 end
 
 local function GetChildrenWhichAre(where, class)
@@ -160,49 +203,60 @@ getgenv().SelectEquipped = false
 local lastPos
 
 local function To3dSpace(pos)
-	return Camera:ScreenPointToRay(pos.x, pos.y).Origin 
+    if getgenv().SelectEquipped then
+	    return Camera:ScreenPointToRay(pos.x, pos.y).Origin 
+    end
 end
 
 
 local function CalcSlope(vec)
-	local rel = Camera.CFrame:pointToObjectSpace(vec)
-	return Vector2.new(rel.x/-rel.z, rel.y/-rel.z)
+    if getgenv().SelectEquipped then
+        local rel = Camera.CFrame:pointToObjectSpace(vec)
+        return Vector2.new(rel.x/-rel.z, rel.y/-rel.z)
+    end
 end
 
 
 local function Overlaps(cf, a1, a2)
-	local rel = Camera.CFrame:ToObjectSpace(cf)
-	local x, y = rel.x / -rel.z, rel.y / -rel.z
+    if getgenv().SelectEquipped then
+        local rel = Camera.CFrame:ToObjectSpace(cf)
+        local x, y = rel.x / -rel.z, rel.y / -rel.z
 
-	return (a1.x) < x and x < (a2.x) 
-		and (a1.y < y and y < a2.y) and rel.z < 0 
+        return (a1.x) < x and x < (a2.x) 
+            and (a1.y < y and y < a2.y) and rel.z < 0
+    end
 end
 
 
 local function Swap(a1, a2)
-	return Vector2.new(math.min(a1.x, a2.x), math.min(a1.y, a2.y)), 
-		Vector2.new(math.max(a1.x, a2.x), math.max(a1.y, a2.y))
+    if getgenv().SelectEquipped then
+        return Vector2.new(math.min(a1.x, a2.x), math.min(a1.y, a2.y)), 
+            Vector2.new(math.max(a1.x, a2.x), math.max(a1.y, a2.y))
+    end
 end
 
 
 local function Search(objs, p1, p2)
-	local Found = {}
-	local a1 = CalcSlope(p1)
-	local a2 = CalcSlope(p2)
-	
-	a1, a2 = Swap(a1, a2)
-	
-	for _ ,obj in ipairs(objs) do
-		
-		local cf = obj:IsA("Model")
-			and obj:GetBoundingBox() or obj.CFrame
-		
-		if Overlaps(cf,a1, a2) then
-			table.insert(Found, obj)
-		end
-	end
-
-	return Found
+    if getgenv().SelectEquipped then
+        local Found = {}
+        local a1 = CalcSlope(p1)
+        local a2 = CalcSlope(p2)
+        
+        a1, a2 = Swap(a1, a2)
+        if getgenv().SelectEquipped then
+            for _ ,obj in ipairs(objs) do
+                
+                local cf = obj:IsA("Model")
+                    and obj:GetBoundingBox() or obj.CFrame
+                
+                if Overlaps(cf,a1, a2) then
+                    table.insert(Found, obj)
+                end
+            end
+        end
+    
+        return Found
+    end
 end
 
 UserInputService.InputBegan:Connect(function(input) 
@@ -219,13 +273,21 @@ UserInputService.InputEnded:Connect(function(input)
 		local result = Search(GetChildrenWhichAre(workspace, "BasePart"), To3dSpace(lastPos), To3dSpace(pos))
 		mouseDown = false; selectionFrame.Visible = false
 		
-		getgenv().Selected = {}
-		
-		for i,v in pairs(result) do
-			table.insert(getgenv().Selected, v)
-		end
+        if getgenv().SelectEquipped then
+            for i,v in pairs(result) do
+                table.insert(getgenv().Selected, v)
+            end
+        end
 	end
 end)
+
+-- Seeder.OnClientEvent:Connect(function(arg)
+-- 	seed = Random.new(arg);
+-- 	for v26 = 1, seed:NextInteger(5, 50) do
+-- 		seed:NextInteger(1, 2);
+-- 		getgenv().seed = seed
+-- 	end
+-- end) this was the 0 iq method (it worked doe)
 
 RunService.Heartbeat:Connect(function()
 	if mouseDown and getgenv().SelectEquipped then
@@ -298,12 +360,24 @@ local GetSelect = Main.Button({
 })
 
 local LockSelected = VIP_REQ.Button({
-	Text = "Toggle Lock Selected",
+	Text = "Lock Selected",
 	Callback = function()
 	    for i,v in pairs(getgenv().Selected) do
 	        GetItem("VIP")
-            game:GetService("ReplicatedStorage").ClientBridge.RequestPropertyChange:InvokeServer(v, "Locked", true)
-            wait(0.2)
+            repeat ClientBridge.RequestPropertyChange:InvokeServer(v, "Locked", true) until(v.Locked == true)
+	    end
+	    
+	    getgenv().Selected = {}
+	    StoreItems()
+	end
+})
+
+local LockSelected = VIP_REQ.Button({
+	Text = "UnLock Selected",
+	Callback = function()
+	    for i,v in pairs(getgenv().Selected) do
+	        GetItem("VIP")
+            repeat ClientBridge.RequestPropertyChange:InvokeServer(v, "Locked", false) until(v.Locked == false)
 	    end
 	    
 	    getgenv().Selected = {}
@@ -370,29 +444,38 @@ local ChangeProperty = Essential.Button({
     end
 })
 
-Fun.Label({
-    Text = "Meteor Shower"
+Essential.Label({
+    Text = "Client"
 })
 
-local MeteorShowerEnabled = false
-
-spawn(function()
-    while wait(0.1) do
-        if MeteorShowerEnabled then
-            local brick = Copy(game:GetService("Workspace").Map.Bricks["Rocket Parts"].Parts.Sphere, CFrame.new(Player.Character.HumanoidRootPart.CFrame.X, Player.Character.HumanoidRootPart.CFrame.Y + 100, Player.Character.HumanoidRootPart.CFrame.Z)) 
-            spawn(function()
-                wait(2.5)
-                Move(brick, CFrame.new(0, -50000, 0))
-            end)
+Essential.TextField({
+    Text = "Teleport to player",
+    Callback = function(v)
+        if v ~= "" then
+            local plr = GetPlayer(v)
+            Player.Character.HumanoidRootPart.CFrame = plr.Character.HumanoidRootPart.CFrame + Vector3.new(0,5,0)
         end
     end
-end)
+})
 
-Fun.Toggle({
-    Text = "Meteor Shower",
+local WalkSpeedSlider = Essential.Slider({
+    Text = "Walkspeed",
     Callback = function(v)
-        MeteorShowerEnabled = v
-    end
+        Player.Character.Humanoid.WalkSpeed = v
+    end,
+    Min = 0,
+    Max = 1000,
+    Def = 16
+})
+
+local JumpPowerSlider = Essential.Slider({
+    Text = "JumpPower",
+    Callback = function(v)
+        Player.Character.Humanoid.JumpPower = v
+    end,
+    Min = 0,
+    Max = 1000,
+    Def = 50
 })
 
 local UBBotEnabled = false
